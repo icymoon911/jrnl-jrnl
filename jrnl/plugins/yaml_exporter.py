@@ -1,7 +1,6 @@
 # Copyright © 2012-2023 jrnl contributors
 # License: https://www.gnu.org/licenses/gpl-3.0.html
 
-import os
 import re
 from typing import TYPE_CHECKING
 
@@ -9,7 +8,6 @@ from jrnl.exception import JrnlException
 from jrnl.messages import Message
 from jrnl.messages import MsgStyle
 from jrnl.messages import MsgText
-from jrnl.output import print_msg
 from jrnl.plugins.text_exporter import TextExporter
 
 if TYPE_CHECKING:
@@ -38,55 +36,26 @@ class YAMLExporter(TextExporter):
         # see also Entry.rag_regex
         multi_tag_regex = re.compile(rf"(?u)^\s*([{tagsymbols}][-+*#/\w]+\s*)+$")
 
-        """Increase heading levels in body text"""
-        newbody = ""
-        heading = "#"
-        previous_line = ""
-        warn_on_heading_level = False
-        for line in body.splitlines(True):
-            if re.match(r"^#+ ", line):
-                """ATX style headings"""
-                newbody = newbody + previous_line + heading + line
-                if re.match(r"^#######+ ", heading + line):
-                    warn_on_heading_level = True
-                line = ""
-            elif re.match(r"^=+$", line.rstrip()) and not re.match(
-                r"^$", previous_line.strip()
-            ):
-                """Setext style H1"""
-                newbody = newbody + heading + "# " + previous_line
-                line = ""
-            elif re.match(r"^-+$", line.rstrip()) and not re.match(
-                r"^$", previous_line.strip()
-            ):
-                """Setext style H2"""
-                newbody = newbody + heading + "## " + previous_line
-                line = ""
-            elif multi_tag_regex.match(line):
-                """Tag only lines"""
-                line = ""
-            else:
-                newbody = newbody + previous_line
-            previous_line = line
-        newbody = newbody + previous_line  # add very last line
+        # Pre-filter tag-only lines before shared heading processing.
+        # This was originally interleaved with heading detection; extracting it
+        # here lets us reuse ``process_markdown_headings`` unchanged.
+        body = "".join(
+            line
+            for line in body.splitlines(True)
+            if not multi_tag_regex.match(line)
+        )
 
-        # make sure the export ends with a blank line
-        if previous_line not in ["\r", "\n", "\r\n", "\n\r"]:
-            newbody = newbody + os.linesep
+        heading = "#"
+        newbody = cls.process_markdown_headings(
+            body,
+            base_heading_level=heading,
+            warn_context={"date": date_str, "title": entry.title},
+        )
 
         # set indentation for YAML body block
         spacebody = "\t"
         for line in newbody.splitlines(True):
             spacebody = spacebody + "\t" + line
-
-        if warn_on_heading_level is True:
-            print_msg(
-                Message(
-                    MsgText.HeadingsPastH6,
-                    MsgStyle.WARNING,
-                    {"date": date_str, "title": entry.title},
-                )
-            )
 
         dayone_attributes = ""
         if hasattr(entry, "uuid"):

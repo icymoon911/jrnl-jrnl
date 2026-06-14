@@ -19,6 +19,85 @@ from jrnl.prompt import yesno
 from .Entry import Entry
 
 
+# ---------------------------------------------------------------------------
+# Filter predicates
+# ---------------------------------------------------------------------------
+# Each factory returns a callable ``(Entry) -> bool`` that keeps entries
+# matching the criterion.  ``Journal.filter()`` composes them so adding a new
+# filter condition is just a new function — no changes to the main method.
+
+
+def _make_tags_predicate(search_tags: set, strict: bool):
+    """Keep entries whose tags satisfy *search_tags* (all-of or any-of)."""
+    if not search_tags:
+        return None
+    op = search_tags.issubset if strict else search_tags.intersection
+
+    def predicate(entry):
+        return bool(op({tag.lower() for tag in entry.tags}))
+
+    return predicate
+
+
+def _make_starred_predicate(starred: bool):
+    """Keep entries whose ``starred`` flag equals *starred*."""
+    return lambda entry: entry.starred == starred
+
+
+def _make_tagged_predicate(tagged: bool):
+    """Keep entries that have (or lack) tags."""
+    return lambda entry: bool(entry.tags) == tagged
+
+
+def _make_month_predicate(month: int):
+    return lambda entry: entry.date.month == month
+
+
+def _make_day_predicate(day: int):
+    return lambda entry: entry.date.day == day
+
+
+def _make_year_predicate(year: int):
+    return lambda entry: entry.date.year == year
+
+
+def _make_start_date_predicate(start_date):
+    return lambda entry: entry.date >= start_date
+
+
+def _make_end_date_predicate(end_date):
+    return lambda entry: entry.date <= end_date
+
+
+def _make_exclude_tags_predicate(excluded_tags: set):
+    """Drop entries that carry any of *excluded_tags*."""
+    if not excluded_tags:
+        return None
+
+    def predicate(entry):
+        return not any(tag in excluded_tags for tag in entry.tags)
+
+    return predicate
+
+
+def _make_contains_predicate(contains: list, strict: bool):
+    """Keep entries whose title/body contain the given substrings.
+
+    In *strict* mode **all** substrings must be present, otherwise **any**
+    match is sufficient.
+    """
+    if not contains:
+        return None
+    needles = [s.casefold() for s in contains]
+
+    def predicate(entry):
+        haystack = entry.title.casefold() + " " + entry.body.casefold()
+        check = all if strict else any
+        return check(n in haystack for n in needles)
+
+    return predicate
+
+
 class Tag:
     def __init__(self, name, count=0):
         self.name = name
@@ -267,56 +346,25 @@ class Journal:
         end_date = time.parse(end_date, inclusive=True)
         start_date = time.parse(start_date)
 
-        # If strict mode is on, all tags have to be present in entry
-        has_tags = (
-            self.search_tags.issubset if strict else self.search_tags.intersection
-        )
-
-        def excluded(tags):
-            return 0 < len([tag for tag in tags if tag in excluded_tags])
-
-        if contains:
-            contains_lower = [substring.casefold() for substring in contains]
-
-        # Create datetime object for comparison below
-        # this approach allows various formats
-        if month or day or year:
-            compare_d = time.parse(f"{month or 1}.{day or 1}.{year or 1}")
-
-        result = [
-            entry
-            for entry in self.entries
-            if (not tags or has_tags(entry.tags))
-            and (not (starred or exclude_starred) or entry.starred == starred)
-            and (not (tagged or exclude_tagged) or bool(entry.tags) == tagged)
-            and (not month or entry.date.month == compare_d.month)
-            and (not day or entry.date.day == compare_d.day)
-            and (not year or entry.date.year == compare_d.year)
-            and (not start_date or entry.date >= start_date)
-            and (not end_date or entry.date <= end_date)
-            and (not exclude or not excluded(entry.tags))
-            and (
-                not contains
-                or (
-                    strict
-                    and all(
-                        substring in entry.title.casefold()
-                        or substring in entry.body.casefold()
-                        for substring in contains_lower
-                    )
-                )
-                or (
-                    not strict
-                    and any(
-                        substring in entry.title.casefold()
-                        or substring in entry.body.casefold()
-                        for substring in contains_lower
-                    )
-                )
-            )
+        # Build the list of active predicates.  Each factory returns ``None``
+        # when its condition is inactive, so we simply filter those out.
+        predicates = [
+            _make_tags_predicate(self.search_tags, strict),
+            _make_starred_predicate(starred) if (starred or exclude_starred) else None,
+            _make_tagged_predicate(tagged) if (tagged or exclude_tagged) else None,
+            _make_month_predicate(month) if month else None,
+            _make_day_predicate(day) if day else None,
+            _make_year_predicate(year) if year else None,
+            _make_start_date_predicate(start_date) if start_date else None,
+            _make_end_date_predicate(end_date) if end_date else None,
+            _make_exclude_tags_predicate(excluded_tags),
+            _make_contains_predicate(contains, strict),
         ]
+        active = [p for p in predicates if p is not None]
 
-        self.entries = result
+        self.entries = [
+            entry for entry in self.entries if all(p(entry) for p in active)
+        ]
 
     def delete_entries(self, entries_to_delete: list[Entry]) -> None:
         """Deletes specific entries from a journal."""

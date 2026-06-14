@@ -385,6 +385,48 @@ def _change_time_search_results(
         journal.write()
 
 
+# ---------------------------------------------------------------------------
+# Display dispatch
+# ---------------------------------------------------------------------------
+# Each entry is a (condition_fn, handler_fn) pair evaluated in order.  The
+# first matching condition wins.  To support a new display format, append a
+# new pair here — ``_display_search_results`` itself never needs to change.
+
+
+def _display_tags(args, journal):
+    print(plugins.get_exporter("tags").export(journal))
+
+
+def _display_short(args, journal):
+    print(journal.pprint(short=True))
+
+
+def _display_pretty(args, journal):
+    print(journal.pprint())
+
+
+def _display_via_exporter(args, journal):
+    exporter = plugins.get_exporter(args.export)
+    if exporter:
+        print(exporter.export(journal, getattr(args, "filename", None)))
+    else:
+        _display_pretty(args, journal)
+
+
+_DISPLAY_HANDLERS = [
+    (lambda args: args.tags, _display_tags),
+    (
+        lambda args: args.short or args.export == "short",
+        _display_short,
+    ),
+    (
+        lambda args: not args.export or args.export == "pretty",
+        _display_pretty,
+    ),
+    (lambda args: args.export, _display_via_exporter),
+]
+
+
 def _display_search_results(args: "Namespace", journal: "Journal", **kwargs) -> None:
     if len(journal) == 0:
         return
@@ -392,20 +434,10 @@ def _display_search_results(args: "Namespace", journal: "Journal", **kwargs) -> 
     # Get export format from config file if not provided at the command line
     args.export = args.export or kwargs["config"].get("display_format")
 
-    if args.tags:
-        print(plugins.get_exporter("tags").export(journal))
-
-    elif args.short or args.export == "short":
-        print(journal.pprint(short=True))
-
-    elif args.export == "pretty":
-        print(journal.pprint())
-
-    elif args.export:
-        exporter = plugins.get_exporter(args.export)
-        print(exporter.export(journal, args.filename))
-    else:
-        print(journal.pprint())
+    for condition, handler in _DISPLAY_HANDLERS:
+        if condition(args):
+            handler(args, journal)
+            return
 
 
 def _has_search_args(args: "Namespace") -> bool:

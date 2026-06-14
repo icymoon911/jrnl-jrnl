@@ -1,14 +1,8 @@
 # Copyright © 2012-2023 jrnl contributors
 # License: https://www.gnu.org/licenses/gpl-3.0.html
 
-import os
-import re
 from typing import TYPE_CHECKING
 
-from jrnl.messages import Message
-from jrnl.messages import MsgStyle
-from jrnl.messages import MsgText
-from jrnl.output import print_msg
 from jrnl.plugins.text_exporter import TextExporter
 
 if TYPE_CHECKING:
@@ -29,51 +23,13 @@ class MarkdownExporter(TextExporter):
         body_wrapper = "\n" if entry.body else ""
         body = body_wrapper + entry.body
 
-        if to_multifile is True:
-            heading = "#"
-        else:
-            heading = "###"
+        heading = "#" if to_multifile else "###"
 
-        """Increase heading levels in body text"""
-        newbody = ""
-        previous_line = ""
-        warn_on_heading_level = False
-        for line in body.splitlines(True):
-            if re.match(r"^#+ ", line):
-                """ATX style headings"""
-                newbody = newbody + previous_line + heading + line
-                if re.match(r"^#######+ ", heading + line):
-                    warn_on_heading_level = True
-                line = ""
-            elif re.match(r"^=+$", line.rstrip()) and not re.match(
-                r"^$", previous_line.strip()
-            ):
-                """Setext style H1"""
-                newbody = newbody + heading + "# " + previous_line
-                line = ""
-            elif re.match(r"^-+$", line.rstrip()) and not re.match(
-                r"^$", previous_line.strip()
-            ):
-                """Setext style H2"""
-                newbody = newbody + heading + "## " + previous_line
-                line = ""
-            else:
-                newbody = newbody + previous_line
-            previous_line = line
-        newbody = newbody + previous_line  # add very last line
-
-        # make sure the export ends with a blank line
-        if previous_line not in ["\r", "\n", "\r\n", "\n\r"]:
-            newbody = newbody + os.linesep
-
-        if warn_on_heading_level is True:
-            print_msg(
-                Message(
-                    MsgText.HeadingsPastH6,
-                    MsgStyle.WARNING,
-                    {"date": date_str, "title": entry.title},
-                )
-            )
+        newbody = cls.process_markdown_headings(
+            body,
+            base_heading_level=heading,
+            warn_context={"date": date_str, "title": entry.title},
+        )
 
         return f"{heading} {date_str} {entry.title}\n{newbody} "
 

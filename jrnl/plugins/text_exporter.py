@@ -87,6 +87,7 @@ class TextExporter:
         )
         return ""
 
+    @staticmethod
     def _slugify(string: str) -> str:
         """Slugifies a string.
         Based on public domain code from https://github.com/zacharyvoase/slugify
@@ -95,6 +96,65 @@ class TextExporter:
         no_punctuation = re.sub(r"[^\w\s-]", "", normalized_string).strip().lower()
         slug = re.sub(r"[-\s]+", "-", no_punctuation)
         return slug
+
+    @staticmethod
+    def process_markdown_headings(
+        text: str,
+        base_heading_level: str = "#",
+        warn_context: dict | None = None,
+    ) -> str:
+        """Increase heading levels in *text* by prepending *base_heading_level*.
+
+        Handles both ATX (``# heading``) and Setext (underline with ``===`` or
+        ``---``) heading styles.  When the resulting heading would exceed H6 a
+        warning is printed using *warn_context* (keys ``date`` and ``title``).
+
+        Subclasses may call this from :meth:`export_entry` to share the heading
+        rewrite logic instead of duplicating it.
+        """
+        newbody = ""
+        previous_line = ""
+        warn_on_heading_level = False
+
+        for line in text.splitlines(True):
+            if re.match(r"^#+ ", line):
+                # ATX style headings
+                newbody = newbody + previous_line + base_heading_level + line
+                if re.match(r"^#######+ ", base_heading_level + line):
+                    warn_on_heading_level = True
+                line = ""
+            elif re.match(r"^=+$", line.rstrip()) and not re.match(
+                r"^$", previous_line.strip()
+            ):
+                # Setext style H1
+                newbody = newbody + base_heading_level + "# " + previous_line
+                line = ""
+            elif re.match(r"^-+$", line.rstrip()) and not re.match(
+                r"^$", previous_line.strip()
+            ):
+                # Setext style H2
+                newbody = newbody + base_heading_level + "## " + previous_line
+                line = ""
+            else:
+                newbody = newbody + previous_line
+            previous_line = line
+
+        newbody = newbody + previous_line  # add very last line
+
+        # make sure the export ends with a blank line
+        if previous_line not in ["\r", "\n", "\r\n", "\n\r"]:
+            newbody = newbody + os.linesep
+
+        if warn_on_heading_level and warn_context is not None:
+            print_msg(
+                Message(
+                    MsgText.HeadingsPastH6,
+                    MsgStyle.WARNING,
+                    warn_context,
+                )
+            )
+
+        return newbody
 
     @classmethod
     def export(cls, journal: "Journal", output: str | None = None) -> str:
