@@ -43,8 +43,7 @@ class Entry:
             self.starred = True
             raw_text = lines[0].strip("\n *") + "\n" + "\n".join(lines[1:])
         self._title, self._body = split_title(raw_text)
-        if self._tags is None:
-            self._tags = list(self._parse_tags())
+        self._tags = list(self._parse_tags())
 
     @property
     def title(self) -> str:

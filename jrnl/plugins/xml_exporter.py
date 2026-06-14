@@ -1,6 +1,7 @@
 # Copyright © 2012-2023 jrnl contributors
 # License: https://www.gnu.org/licenses/gpl-3.0.html
 
+import json
 from typing import TYPE_CHECKING
 from xml.dom import minidom
 
@@ -27,6 +28,12 @@ class XMLExporter(JSONExporter):
         entry_el = doc_el.createElement("entry")
         for key, value in cls.entry_to_dict(entry).items():
             elem = doc_el.createElement(key)
+            if isinstance(value, list):
+                value = ", ".join(str(v) for v in value)
+            elif isinstance(value, dict):
+                value = json.dumps(value)
+            else:
+                value = str(value)
             elem.appendChild(doc_el.createTextNode(value))
             entry_el.appendChild(elem)
         if not doc:
@@ -41,7 +48,7 @@ class XMLExporter(JSONExporter):
         entry_el.setAttribute("date", entry.date.isoformat())
         if hasattr(entry, "uuid"):
             entry_el.setAttribute("uuid", entry.uuid)
-        entry_el.setAttribute("starred", entry.starred)
+        entry_el.setAttribute("starred", str(entry.starred).lower())
         tags = entry.tags
         for tag in tags:
             tag_el = doc.createElement("tag")

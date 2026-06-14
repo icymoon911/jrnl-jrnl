@@ -36,7 +36,7 @@ def parse(
     if len(date_str) <= 6 and bracketed:
         return None
 
-    default_date = DEFAULT_FUTURE if inclusive else DEFAULT_PAST
+    default_date = DEFAULT_PAST
     date = None
     year_present = False
 
@@ -50,7 +50,7 @@ def parse(
             date = dateparse(date_str, default=default_date)
             if date.year == FAKE_YEAR:
                 date = datetime.datetime(
-                    datetime.datetime.now().year, date.timetuple()[1:6]
+                    datetime.datetime.now().year, *date.timetuple()[1:6]
                 )
             else:
                 year_present = True
