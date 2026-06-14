@@ -6,6 +6,7 @@ from typing import Type
 from jrnl.plugins.calendar_heatmap_exporter import CalendarHeatmapExporter
 from jrnl.plugins.dates_exporter import DatesExporter
 from jrnl.plugins.fancy_exporter import FancyExporter
+from jrnl.plugins.html_exporter import HTMLExporter
 from jrnl.plugins.jrnl_importer import JRNLImporter
 from jrnl.plugins.json_exporter import JSONExporter
 from jrnl.plugins.markdown_exporter import MarkdownExporter
@@ -18,6 +19,7 @@ __exporters = [
     CalendarHeatmapExporter,
     DatesExporter,
     FancyExporter,
+    HTMLExporter,
     JSONExporter,
     MarkdownExporter,
     TagExporter,
