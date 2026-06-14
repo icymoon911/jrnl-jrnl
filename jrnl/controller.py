@@ -395,7 +395,10 @@ def _display_search_results(args: "Namespace", journal: "Journal", **kwargs) -> 
     if args.tags:
         print(plugins.get_exporter("tags").export(journal))
 
-    elif args.short or args.export == "short":
+    elif args.short and not args.export:
+        print(journal.pprint(short=True))
+
+    elif args.export == "short":
         print(journal.pprint(short=True))
 
     elif args.export == "pretty":
@@ -403,7 +406,7 @@ def _display_search_results(args: "Namespace", journal: "Journal", **kwargs) -> 
 
     elif args.export:
         exporter = plugins.get_exporter(args.export)
-        print(exporter.export(journal, args.filename))
+        print(exporter.export(journal, args.filename, short=args.short))
     else:
         print(journal.pprint())
 

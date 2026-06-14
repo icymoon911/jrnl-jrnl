@@ -51,5 +51,5 @@ def test_display_search_results_builtin_plugins(
     _display_search_results(mock_args, test_journal)
 
     mock_exporter.assert_called_once_with(export_format)
-    mock_export.assert_called_once_with(test_journal, test_filename)
+    mock_export.assert_called_once_with(test_journal, test_filename, short=False)
     mock_print.assert_called_once_with(mock_export.return_value)

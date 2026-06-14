@@ -97,7 +97,7 @@ class TextExporter:
         return slug
 
     @classmethod
-    def export(cls, journal: "Journal", output: str | None = None) -> str:
+    def export(cls, journal: "Journal", output: str | None = None, short: bool = False) -> str:
         """Exports to individual files if output is an existing path, or into
         a single file if output is a file name, or returns the exporter's
         representation as string if output is None."""
