@@ -29,7 +29,7 @@ class TagExporter(TextExporter):
         result = ""
         if not tag_counts:
             return "[No tags found in journal.]"
-        elif min(tag_counts)[0] == 0:
+        elif min(tag_counts, key=lambda x: x[0])[0] == 1:
             tag_counts = filter(lambda x: x[0] > 1, tag_counts)
             result += "[Removed tags that appear only once.]\n"
         result += "\n".join(

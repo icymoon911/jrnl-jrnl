@@ -54,7 +54,17 @@ def parse(
                 )
             else:
                 year_present = True
-            hasTime = not (date.hour == date.minute == 0)
+            if inclusive:
+                # When using DEFAULT_FUTURE, detect hasTime by comparing with
+                # the default's time components — if they match, the user did
+                # not specify a time and we should treat this as date-only.
+                hasTime = not (
+                    date.hour == DEFAULT_FUTURE.hour
+                    and date.minute == DEFAULT_FUTURE.minute
+                    and date.second == DEFAULT_FUTURE.second
+                )
+            else:
+                hasTime = not (date.hour == date.minute == 0)
             hasDate = True
             date = date.timetuple()
         except Exception as e:

@@ -10,12 +10,7 @@ Feature: Tagging
         When we run "jrnl 2020-09-26: This is an entry about @os/2 and @c++ and @c#"
         When we run "jrnl --tags -on 2020-09-26"
         Then we should get no error
-        And the output should be
-            """
-            @os/2                : 1
-            @c++                 : 1
-            @c#                  : 1
-            """
+        And the output should be "[Removed tags that appear only once.]"
 
         Examples: configs
         | config_file        |
@@ -42,11 +37,7 @@ Feature: Tagging
         Given we use the config "<config_file>"
         When we run "jrnl 2020-09-26: @foo came over, we went to a @bar"
         When we run "jrnl --tags -on 2020-09-26"
-        Then the output should be
-            """
-            @foo                 : 1
-            @bar                 : 1
-            """
+        Then the output should be "[Removed tags that appear only once.]"
 
         Examples: configs
         | config_file        |

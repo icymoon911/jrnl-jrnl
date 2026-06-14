@@ -5,6 +5,7 @@ import datetime
 import logging
 import os
 import re
+import unicodedata
 
 from jrnl import time
 from jrnl.config import validate_journal_name
@@ -276,7 +277,7 @@ class Journal:
             return 0 < len([tag for tag in tags if tag in excluded_tags])
 
         if contains:
-            contains_lower = [substring.casefold() for substring in contains]
+            contains_lower = [unicodedata.normalize("NFC", substring).casefold() for substring in contains]
 
         # Create datetime object for comparison below
         # this approach allows various formats
@@ -300,16 +301,16 @@ class Journal:
                 or (
                     strict
                     and all(
-                        substring in entry.title.casefold()
-                        or substring in entry.body.casefold()
+                        substring in unicodedata.normalize("NFC", entry.title).casefold()
+                        or substring in unicodedata.normalize("NFC", entry.body).casefold()
                         for substring in contains_lower
                     )
                 )
                 or (
                     not strict
                     and any(
-                        substring in entry.title.casefold()
-                        or substring in entry.body.casefold()
+                        substring in unicodedata.normalize("NFC", entry.title).casefold()
+                        or substring in unicodedata.normalize("NFC", entry.body).casefold()
                         for substring in contains_lower
                     )
                 )

@@ -25,12 +25,25 @@ class Entry:
     ):
         self.journal = journal  # Reference to journal mainly to access its config
         self.date = date or datetime.datetime.now()
-        self.text = text
+        self._text = text
         self._title = None
         self._body = None
         self._tags = None
         self.starred = starred
         self.modified = False
+
+    @property
+    def text(self) -> str:
+        return self._text
+
+    @text.setter
+    def text(self, value: str):
+        self._text = value
+        # Invalidate caches when text changes so that title, body,
+        # and tags are re-parsed on next access
+        self._title = None
+        self._body = None
+        self._tags = None
 
     @property
     def fulltext(self) -> str:

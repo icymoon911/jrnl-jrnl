@@ -27,7 +27,13 @@ class XMLExporter(JSONExporter):
         entry_el = doc_el.createElement("entry")
         for key, value in cls.entry_to_dict(entry).items():
             elem = doc_el.createElement(key)
-            elem.appendChild(doc_el.createTextNode(value))
+            if isinstance(value, list):
+                for item in value:
+                    item_el = doc_el.createElement(key)
+                    item_el.appendChild(doc_el.createTextNode(str(item)))
+                    elem.appendChild(item_el)
+            else:
+                elem.appendChild(doc_el.createTextNode(str(value)))
             entry_el.appendChild(elem)
         if not doc:
             doc_el.appendChild(entry_el)
@@ -41,7 +47,7 @@ class XMLExporter(JSONExporter):
         entry_el.setAttribute("date", entry.date.isoformat())
         if hasattr(entry, "uuid"):
             entry_el.setAttribute("uuid", entry.uuid)
-        entry_el.setAttribute("starred", entry.starred)
+        entry_el.setAttribute("starred", str(entry.starred).lower())
         tags = entry.tags
         for tag in tags:
             tag_el = doc.createElement("tag")

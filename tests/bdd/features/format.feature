@@ -275,10 +275,9 @@ Feature: Custom formats
         When we run "jrnl --export tags"
         Then the output should be
             """
+            [Removed tags that appear only once.]
             @tagtwo              : 2
             @tagone              : 2
-            @tagthree            : 1
-            @ipsum               : 1
             """
 
         Examples: configs

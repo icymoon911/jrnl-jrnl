@@ -237,10 +237,9 @@ Feature: Searching in a journal
         Then we should get no error
         And the output should be
             """
+            [Removed tags that appear only once.]
             @tagtwo              : 2
             @tagone              : 2
-            @tagthree            : 1
-            @ipsum               : 1
             """
 
         Examples: configs
@@ -253,11 +252,7 @@ Feature: Searching in a journal
         Given we use the config "<config_file>"
         When we run "jrnl -from 'september 2020' --tags"
         Then we should get no error
-        And the output should be
-            """
-            @tagthree            : 1
-            @tagone              : 1
-            """
+        And the output should be "[Removed tags that appear only once.]"
 
         Examples: configs
         | config_file   |
@@ -268,11 +263,7 @@ Feature: Searching in a journal
     Scenario Outline:  Excluding a tag should filter out all entries with that tag
         Given we use the config "<config_file>"
         When we run "jrnl --tags -not @tagtwo"
-        Then the output should be
-            """
-            @tagthree            : 1
-            @tagone              : 1
-            """
+        Then the output should be "[Removed tags that appear only once.]"
 
         Examples: configs
         | config_file   |
@@ -283,10 +274,7 @@ Feature: Searching in a journal
     Scenario Outline:  Excluding multiple tags should filter out all entries with those tags
         Given we use the config "<config_file>"
         When we run "jrnl --tags -not @tagone -not @tagthree"
-        Then the output should be
-            """
-            @tagtwo              : 1
-            """
+        Then the output should be "[Removed tags that appear only once.]"
 
         Examples: configs
         | config_file   |
