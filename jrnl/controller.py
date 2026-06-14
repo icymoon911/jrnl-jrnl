@@ -392,20 +392,62 @@ def _display_search_results(args: "Namespace", journal: "Journal", **kwargs) -> 
     # Get export format from config file if not provided at the command line
     args.export = args.export or kwargs["config"].get("display_format")
 
-    if args.tags:
-        print(plugins.get_exporter("tags").export(journal))
+    # Determine the chosen display handler via dispatch.
+    # Each handler is a callable: (journal, args) -> None
+    handler = _resolve_display_handler(args)
+    handler(journal, args)
 
-    elif args.short or args.export == "short":
-        print(journal.pprint(short=True))
 
-    elif args.export == "pretty":
-        print(journal.pprint())
+# Built-in display handlers. Each has the signature (journal, args) -> None.
 
-    elif args.export:
-        exporter = plugins.get_exporter(args.export)
+
+def _display_pretty(journal: "Journal", args: "Namespace") -> None:
+    print(journal.pprint())
+
+
+def _display_short(journal: "Journal", args: "Namespace") -> None:
+    print(journal.pprint(short=True))
+
+
+def _display_via_exporter(format_name: str):
+    """Return a handler that delegates rendering to a registered exporter."""
+    def handler(journal: "Journal", args: "Namespace") -> None:
+        exporter = plugins.get_exporter(format_name)
         print(exporter.export(journal, args.filename))
-    else:
-        print(journal.pprint())
+
+    return handler
+
+
+_BUILTIN_DISPLAY_HANDLERS = {
+    "pretty": _display_pretty,
+    "short": _display_short,
+}
+
+
+def _resolve_display_handler(args: "Namespace"):
+    """Select the appropriate display handler based on *args*.
+
+    New export formats should register themselves in
+    :data:`jrnl.plugins.__exporter_types` and will be dispatched here
+    automatically. Adding a bespoke built-in format only requires registering
+    a new entry in ``_BUILTIN_DISPLAY_HANDLERS``.
+    """
+    if args.tags:
+        return _display_via_exporter("tags")
+
+    if args.short or args.export == "short":
+        return _display_short
+
+    if args.export == "pretty":
+        return _display_pretty
+
+    if args.export and args.export in _BUILTIN_DISPLAY_HANDLERS:
+        return _BUILTIN_DISPLAY_HANDLERS[args.export]
+
+    if args.export:
+        return _display_via_exporter(args.export)
+
+    return _display_pretty
 
 
 def _has_search_args(args: "Namespace") -> bool:

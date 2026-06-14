@@ -1,7 +1,6 @@
 # Copyright © 2012-2023 jrnl contributors
 # License: https://www.gnu.org/licenses/gpl-3.0.html
 
-import os
 import re
 from typing import TYPE_CHECKING
 
@@ -34,52 +33,25 @@ class YAMLExporter(TextExporter):
         body_wrapper = "\n" if entry.body else ""
         body = body_wrapper + entry.body
 
+        newbody, warn_on_heading_level = cls.process_markdown_headings(body)
+
+        # Strip lines that contain only tags (YAML-specific post-processing)
         tagsymbols = entry.journal.config["tagsymbols"]
-        # see also Entry.rag_regex
+        # see also Entry.tag_regex
         multi_tag_regex = re.compile(rf"(?u)^\s*([{tagsymbols}][-+*#/\w]+\s*)+$")
-
-        """Increase heading levels in body text"""
-        newbody = ""
-        heading = "#"
-        previous_line = ""
-        warn_on_heading_level = False
-        for line in body.splitlines(True):
-            if re.match(r"^#+ ", line):
-                """ATX style headings"""
-                newbody = newbody + previous_line + heading + line
-                if re.match(r"^#######+ ", heading + line):
-                    warn_on_heading_level = True
-                line = ""
-            elif re.match(r"^=+$", line.rstrip()) and not re.match(
-                r"^$", previous_line.strip()
-            ):
-                """Setext style H1"""
-                newbody = newbody + heading + "# " + previous_line
-                line = ""
-            elif re.match(r"^-+$", line.rstrip()) and not re.match(
-                r"^$", previous_line.strip()
-            ):
-                """Setext style H2"""
-                newbody = newbody + heading + "## " + previous_line
-                line = ""
-            elif multi_tag_regex.match(line):
-                """Tag only lines"""
-                line = ""
-            else:
-                newbody = newbody + previous_line
-            previous_line = line
-        newbody = newbody + previous_line  # add very last line
-
-        # make sure the export ends with a blank line
-        if previous_line not in ["\r", "\n", "\r\n", "\n\r"]:
-            newbody = newbody + os.linesep
+        filtered_lines = []
+        for line in newbody.splitlines(True):
+            if multi_tag_regex.match(line):
+                continue
+            filtered_lines.append(line)
+        newbody = "".join(filtered_lines)
 
         # set indentation for YAML body block
         spacebody = "\t"
         for line in newbody.splitlines(True):
             spacebody = spacebody + "\t" + line
 
-        if warn_on_heading_level is True:
+        if warn_on_heading_level:
             print_msg(
                 Message(
                     MsgText.HeadingsPastH6,
